@@ -22,15 +22,16 @@ const STATES = {
   VICTORY: 3,
 };
 
-const MAX_XY = 900;
+// const MAX_XY = 900;
 const EMOJI_FONT_SIZE = 20;
 const TEXT_FONT_SIZE = 40;
-const DIFF_TYPE_COUNT = 200;
+const DIFF_TYPE_COUNT = 100;
 const MAX_ITEMS_NUMBER = DIFF_TYPE_COUNT * 3;
 const WIN_RADIUS = 15;
-const ITEM_RAND_STEP_SIZE = 4;
+const ITEM_RAND_STEP_SIZE = 2;
 const SOUND_VOLUME = 0.02;
 const MAX_SOUND_COUNT = 20;
+const SCREEN_BORDER_OFFSET = 100;
 
 let w, h;
 let ITEMS = [];
@@ -42,7 +43,7 @@ let WINNER;
 let MAX_Y, MAX_X;
 let SOUND_PLAYED_COUNT = 0;
 
-function getRandVector() {
+function getItemRandomPosition() {
   const pos_x = -MAX_X / 2 + Math.random() * MAX_X;
   const pos_y = -MAX_Y / 2 + Math.random() * MAX_Y;
 
@@ -51,20 +52,20 @@ function getRandVector() {
 }
 
 function init() {
-  MAX_Y = h - 50;
-  MAX_X = w - 50;
+  MAX_Y = h - SCREEN_BORDER_OFFSET;
+  MAX_X = w - SCREEN_BORDER_OFFSET;
 
   const stone = new Array(DIFF_TYPE_COUNT)
     .fill(0)
-    .map(() => new Item(getRandVector(), STONE_TYPE));
+    .map(() => new Item(getItemRandomPosition(), STONE_TYPE));
 
   const paper = new Array(DIFF_TYPE_COUNT)
     .fill(0)
-    .map(() => new Item(getRandVector(), PAPER_TYPE));
+    .map(() => new Item(getItemRandomPosition(), PAPER_TYPE));
 
   const scissors = new Array(DIFF_TYPE_COUNT)
     .fill(0)
-    .map(() => new Item(getRandVector(), SCISSORS_TYPE));
+    .map(() => new Item(getItemRandomPosition(), SCISSORS_TYPE));
 
   ITEMS = stone.concat(paper, scissors);
 }
@@ -116,6 +117,7 @@ function draw() {
       break;
 
     case STATES.PLAYING:
+      // TODO: show how many items currently
       moveItems();
       convertItems();
       checkVictoryCondition();
