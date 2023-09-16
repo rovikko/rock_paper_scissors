@@ -8,6 +8,7 @@ class Item {
   }
 
   draw() {
+    textSize(EMOJI_FONT_SIZE);
     text(this.type, this.position.x, this.position.y);
   }
 }
@@ -15,29 +16,44 @@ class Item {
 const PAPER_TYPE = "🧻";
 const STONE_TYPE = "🗿";
 const SCISSORS_TYPE = "🪓";
+const STATES = {
+  AFTERINIT: 1,
+  PLAYING: 2,
+  VICTORY: 3,
+};
+
 const MAX_XY = 900;
-const FONT_SIZE = 40;
-const DIFF_TYPE_COUNT = 30;
-const WIN_RADIUS = 10;
-const ITEM_MOVE_SPPED = 2;
+const EMOJI_FONT_SIZE = 20;
+const TEXT_FONT_SIZE = 40;
+const DIFF_TYPE_COUNT = 200;
+const MAX_ITEMS_NUMBER = DIFF_TYPE_COUNT * 3;
+const WIN_RADIUS = 15;
+const ITEM_RAND_STEP_SIZE = 4;
 const SOUND_VOLUME = 0.02;
+const MAX_SOUND_COUNT = 20;
 
 let w, h;
 let ITEMS = [];
 let PAPER_SOUND;
 let STONE_SOUND;
 let SCISSORS_SOUND;
-let GAME_ACTIVE = false;
+let GAME_STATE;
+let WINNER;
+let MAX_Y, MAX_X;
+let SOUND_PLAYED_COUNT = 0;
 
 function getRandVector() {
-  const pos_x = -MAX_XY / 2 + Math.random() * MAX_XY;
-  const pos_y = -MAX_XY / 2 + Math.random() * MAX_XY;
+  const pos_x = -MAX_X / 2 + Math.random() * MAX_X;
+  const pos_y = -MAX_Y / 2 + Math.random() * MAX_Y;
 
   const position = createVector(pos_x, pos_y);
   return position;
 }
 
 function init() {
+  MAX_Y = h - 50;
+  MAX_X = w - 50;
+
   const stone = new Array(DIFF_TYPE_COUNT)
     .fill(0)
     .map(() => new Item(getRandVector(), STONE_TYPE));
@@ -75,26 +91,48 @@ function setup() {
 
   createCanvas(w, h);
   stroke(255);
-  textSize(FONT_SIZE);
 
   background(0);
   init();
+
+  GAME_STATE = STATES.AFTERINIT;
 }
 
 function draw() {
   background(20);
-
+  if (frameCount % 10 == 0) {
+    SOUND_PLAYED_COUNT = 0;
+  }
   translate(w / 2, h / 2);
-
   drawItems();
-  if (GAME_ACTIVE) {
-    moveItems();
-    convertItems();
-  } else {
-    background(0, 200);
-    textStyle();
-    fill(255);
-    text("CLICK TO START", -150, 0);
+
+  switch (GAME_STATE) {
+    case STATES.AFTERINIT:
+      background(0, 200);
+      fill(255);
+      textSize(TEXT_FONT_SIZE);
+      text("CLICK TO START", -160, 0);
+      noLoop();
+      break;
+
+    case STATES.PLAYING:
+      moveItems();
+      convertItems();
+      checkVictoryCondition();
+      break;
+
+    case STATES.VICTORY:
+      background(0, 230);
+      fill(255);
+      textSize(TEXT_FONT_SIZE);
+      text(`${WINNER} WINNER ${WINNER}`, -145, 0);
+      textSize(20);
+      text("CLICK TO RESTART", -100, 40);
+      noLoop();
+      break;
+
+    default:
+      break;
   }
 }
 
@@ -130,9 +168,20 @@ function moveItems() {
       }
     }
 
-    const move = closest.position.copy().sub(item.position).normalize();
+    const move = closest.position.copy().sub(item.position);
+
+    // DEBUG: move lines
+    // line(
+    //   item.position.x,
+    //   item.position.y,
+    //   closest.position.x,
+    //   closest.position.y
+    // );
+
+    move.normalize();
+
     item.position.add(move);
-    const rand = p5.Vector.random2D().normalize().mult(ITEM_MOVE_SPPED);
+    const rand = p5.Vector.random2D().normalize().mult(ITEM_RAND_STEP_SIZE);
     item.position.add(rand);
   }
 }
@@ -153,10 +202,41 @@ function convertItems() {
     for (const tgt of targets) {
       const dist = item.position.dist(tgt.position);
       if (dist < WIN_RADIUS) {
+        // TODO: add statistics how many paper stone and scissors were defeated
         tgt.type = item.type;
-        playSound(item.type);
+
+        if (SOUND_PLAYED_COUNT < MAX_SOUND_COUNT) {
+          playSound(item.type);
+          SOUND_PLAYED_COUNT++;
+        }
+
+        // TODO: check this break;
+        break;
       }
     }
+  }
+}
+
+function checkVictoryCondition() {
+  const paper = ITEMS.filter((v) => v.type === PAPER_TYPE).length;
+  const stone = ITEMS.filter((v) => v.type === STONE_TYPE).length;
+  const scissors = ITEMS.filter((v) => v.type === SCISSORS_TYPE).length;
+
+  let winner;
+
+  if (paper === MAX_ITEMS_NUMBER) {
+    winner = PAPER_TYPE;
+  }
+  if (stone === MAX_ITEMS_NUMBER) {
+    winner = STONE_TYPE;
+  }
+  if (scissors === MAX_ITEMS_NUMBER) {
+    winner = SCISSORS_TYPE;
+  }
+
+  if (winner) {
+    GAME_STATE = STATES.VICTORY;
+    WINNER = winner;
   }
 }
 
@@ -170,10 +250,23 @@ function playSound(type) {
   }
 }
 
-function mouseClicked() {
-  GAME_ACTIVE = true;
+function restart() {
+  ITEMS = [];
+  init();
+  start();
 }
 
-// const PAPER_TYPE = "🧻";
-// const STONE_TYPE = "🗿";
-// const SCISSORS_TYPE = "🪓";
+function start() {
+  GAME_STATE = STATES.PLAYING;
+  loop();
+}
+
+function mousePressed() {
+  if (GAME_STATE === STATES.AFTERINIT) {
+    start();
+  }
+
+  if (GAME_STATE === STATES.VICTORY) {
+    restart();
+  }
+}
